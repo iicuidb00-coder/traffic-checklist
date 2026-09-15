@@ -1,0 +1,59 @@
+{
+  "bundleType": "basic",
+  "starterVersion": "starter-v1",
+  "managedDocVersions": {
+    "docReadme": {
+      "versionGroupKey": "starter-core",
+      "versionGroupLabel": "스타터 핵심 문서 기준",
+      "version": "starter-core-2026-08-27.1",
+      "updatedAt": "2026-08-27"
+    },
+    "startHere": {
+      "versionGroupKey": "starter-core",
+      "versionGroupLabel": "스타터 핵심 문서 기준",
+      "version": "starter-core-2026-08-27.1",
+      "updatedAt": "2026-08-27"
+    },
+    "aiStartPrompt": {
+      "versionGroupKey": "starter-core",
+      "versionGroupLabel": "스타터 핵심 문서 기준",
+      "version": "starter-core-2026-08-27.1",
+      "updatedAt": "2026-08-27"
+    },
+    "aiSecurityIntegrated": {
+      "versionGroupKey": "security-review",
+      "versionGroupLabel": "AI 보안 점검 문서 기준",
+      "version": "2026-08-22",
+      "updatedAt": "2026-08-22"
+    }
+  },
+  "aiEntryDocs": [
+    "doc/README.md",
+    "doc/voss-starter/START_HERE.md",
+    "doc/voss-starter/AI_개발시작_프롬프트.md",
+    "doc/voss-starter/VOSS_AI통합보안점검.md"
+  ],
+  "humanEntryDocs": [
+    "doc/README.md",
+    "README.md"
+  ],
+  "managedFiles": [
+    "doc/README.md",
+    "doc/voss-starter/START_HERE.md",
+    "doc/voss-starter/AI_개발시작_프롬프트.md",
+    "doc/voss-starter/VOSS_AI통합보안점검.md",
+    "doc/voss-starter/tools/security_scan.py",
+    "doc/voss-starter/index/문서색인.md",
+    "doc/voss-starter/status/현재진행상태.md",
+    "doc/voss-starter/rules/문서관리규칙.md",
+    "doc/voss-starter/rules/기술기준.md",
+    "doc/voss-starter/rules/저장및데이터정책.md",
+    "doc/voss-starter/rules/배포및환경변수정책.md",
+    "doc/voss-starter/plans/기획서_템플릿.md",
+    "doc/voss-starter/design/설계서_템플릿.md",
+    "doc/voss-starter/implementation/구현계획_템플릿.md",
+    "doc/voss-starter/testing/하네스검사_템플릿.md",
+    "doc/voss-starter/testing/정합성점검_템플릿.md"
+  ],
+  "lastExpandedAt": null
+}
