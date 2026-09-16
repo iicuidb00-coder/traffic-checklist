@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.46.0",
+    "prisma": "^5.22.0",
+    "recharts": "^3.10.1"
+  },
+  "scripts": {
+    "db:push": "prisma db push",
+    "db:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "db:generate": "prisma generate"
+  }
+}

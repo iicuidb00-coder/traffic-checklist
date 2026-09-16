@@ -1,93 +1,71 @@
-# traffic-checklist
+# 베드로 지파 교통과 월간 체크리스트 시스템
 
+## 기술 스택
+- Next.js 14 (App Router)
+- TypeScript
+- Prisma + VOSS PostgreSQL
+- Tailwind CSS
+- Recharts (차트)
+- Zion OAuth 로그인
 
+## 시작하기
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.vhub.kr/VOSS_RT/vossu26f2e612271e/traffic-checklist.git
-git branch -M main
-git push -uf origin main
+### 1. 환경변수 설정
+```bash
+cp .env.example .env
+# .env 파일에 실제 값 입력
 ```
 
-## Integrate with your tools
+VOSS 환경설정에서 제공되는 값:
+- `VPG_DATABASE_URL`, `VPG_HOST` 등 PostgreSQL 접속 정보
+- `ZION_AUTHORIZE_URL`, `ZION_TOKEN_URL`, `ZION_ME_URL`, `ZION_VALIDATE_URL` (ZION_ENV 선택 시 자동)
 
-* [Set up project integrations](https://gitlab.vhub.kr/VOSS_RT/vossu26f2e612271e/traffic-checklist/-/settings/integrations)
+직접 설정 필요:
+- `ZION_APP_KEY`: Zion 앱 REST API 키
+- `ZION_REDIRECT_URI`: 실제 콜백 주소 (예: `https://your-domain.voss.kr/api/auth/zion-login/callback`)
+- `NEXT_PUBLIC_BASE_URL`: 배포 도메인
 
-## Collaborate with your team
+### 2. DB 마이그레이션 및 시드
+```bash
+npm run db:generate   # Prisma 클라이언트 생성
+npm run db:push       # DB 스키마 반영
+npm run db:seed       # 교회/중점사항 초기 데이터 입력
+```
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### 3. 개발 서버
+```bash
+npm run dev
+```
 
-## Test and Deploy
+### 4. 빌드
+```bash
+npm run build
+npm start
+```
 
-Use the built-in continuous integration in GitLab.
+## 권한 체계
+| 역할 | 설명 |
+|------|------|
+| `member` | 자기 교회 체크리스트만 입력 |
+| `manager` | 담당 교회 + 전체 조회 |
+| `admin` | 전체 교회 관리 + 사용자 권한 설정 |
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+## 최초 관리자 설정
+1. Zion 로그인 후 자동 계정 생성
+2. DB에서 직접 role을 `admin`으로 변경:
+   ```sql
+   UPDATE "User" SET role = 'admin', "churchId" = null
+   WHERE "zionNewNo" = '본인13자리번호';
+   ```
+3. 이후 `/admin` 페이지에서 다른 사용자 권한 설정 가능
 
-***
+## 페이지 구조
+- `/` — 전체 대시보드 (연간/월별 교회별 달성률)
+- `/dashboard/[church]` — 교회별 상세 대시보드 (월별/분기별/달성유형 분석)
+- `/checklist` — 내 교회 이번 달 체크리스트 입력
+- `/checklist/[church]` — 관리자용 특정 교회 체크리스트
+- `/admin` — 사용자 교회 배정 및 권한 관리
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## 달이 바뀌면?
+별도 작업 없이 자동으로 새 달 빈 체크리스트가 표시됩니다.
+각 교회 담당자가 해당 월에 항목을 입력하면 됩니다.
