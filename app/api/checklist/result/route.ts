@@ -1,61 +1,36 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 
-// PUT: 달성 결과 저장/갱신
 export async function PUT(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
   const body = await req.json()
   const { itemId, isDone, achieveTypes, failType, failDetails, note } = body
-
   const item = await prisma.checklistItem.findUnique({ where: { id: itemId } })
   if (!item) return NextResponse.json({ error: 'not found' }, { status: 404 })
-
-  if (session.role === 'member' && session.churchId !== item.churchId) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
-
+  if (session.role === 'member' && session.churchId !== item.churchId) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  const fd = (k: string) => failDetails?.includes(k) ?? false
   const data = {
-    isDone,
-    churchId: item.churchId,
-    year: item.year,
-    month: item.month,
+    isDone, churchId: item.churchId, year: item.year, month: item.month,
     achieveTypeSchedule: achieveTypes?.includes('achieveTypeSchedule') ?? false,
     achieveTypeIntensive: achieveTypes?.includes('achieveTypeIntensive') ?? false,
     achieveTypeHabit: achieveTypes?.includes('achieveTypeHabit') ?? false,
     achieveTypeRole: achieveTypes?.includes('achieveTypeRole') ?? false,
     failType: isDone ? null : (failType ?? null),
-    failDetailGoalVague: failDetails?.includes('failDetailGoalVague') ?? false,
-    failDetailGoalUnrealistic: failDetails?.includes('failDetailGoalUnrealistic') ?? false,
-    failDetailGoalPriority: failDetails?.includes('failDetailGoalPriority') ?? false,
-    failDetailNoSchedule: failDetails?.includes('failDetailNoSchedule') ?? false,
-    failDetailNoStepPlan: failDetails?.includes('failDetailNoStepPlan') ?? false,
-    failDetailNoAssignee: failDetails?.includes('failDetailNoAssignee') ?? false,
-    failDetailWorkCondition: failDetails?.includes('failDetailWorkCondition') ?? false,
-    failDetailTimeShort: failDetails?.includes('failDetailTimeShort') ?? false,
-    failDetailNoRepeat: failDetails?.includes('failDetailNoRepeat') ?? false,
-    failDetailLostMotivation: failDetails?.includes('failDetailLostMotivation') ?? false,
-    failDetailPostpone: failDetails?.includes('failDetailPostpone') ?? false,
-    failDetailNoMidCheck: failDetails?.includes('failDetailNoMidCheck') ?? false,
-    failDetailLateResponse: failDetails?.includes('failDetailLateResponse') ?? false,
-    failDetailNoData: failDetails?.includes('failDetailNoData') ?? false,
-    failDetailNoExternal: failDetails?.includes('failDetailNoExternal') ?? false,
-    failDetailNoRiskPlan: failDetails?.includes('failDetailNoRiskPlan') ?? false,
-    failDetailNoResource: failDetails?.includes('failDetailNoResource') ?? false,
-    failDetailRoleDup: failDetails?.includes('failDetailRoleDup') ?? false,
-    failDetailGap: failDetails?.includes('failDetailGap') ?? false,
-    failDetailCollapse: failDetails?.includes('failDetailCollapse') ?? false,
-    failDetailDelay: failDetails?.includes('failDetailDelay') ?? false,
-    note: note ?? null,
+    failDetailGoalVague: fd('failDetailGoalVague'), failDetailGoalUnrealistic: fd('failDetailGoalUnrealistic'),
+    failDetailGoalPriority: fd('failDetailGoalPriority'), failDetailNoSchedule: fd('failDetailNoSchedule'),
+    failDetailNoStepPlan: fd('failDetailNoStepPlan'), failDetailNoAssignee: fd('failDetailNoAssignee'),
+    failDetailWorkCondition: fd('failDetailWorkCondition'), failDetailTimeShort: fd('failDetailTimeShort'),
+    failDetailNoRepeat: fd('failDetailNoRepeat'), failDetailLostMotivation: fd('failDetailLostMotivation'),
+    failDetailPostpone: fd('failDetailPostpone'), failDetailNoMidCheck: fd('failDetailNoMidCheck'),
+    failDetailLateResponse: fd('failDetailLateResponse'), failDetailNoData: fd('failDetailNoData'),
+    failDetailNoExternal: fd('failDetailNoExternal'), failDetailNoRiskPlan: fd('failDetailNoRiskPlan'),
+    failDetailNoResource: fd('failDetailNoResource'), failDetailRoleDup: fd('failDetailRoleDup'),
+    failDetailGap: fd('failDetailGap'), failDetailCollapse: fd('failDetailCollapse'),
+    failDetailDelay: fd('failDetailDelay'), note: note ?? null,
   }
-
-  const result = await prisma.checklistResult.upsert({
-    where: { itemId },
-    update: data,
-    create: { itemId, ...data },
-  })
-
+  const result = await prisma.checklistResult.upsert({ where: { itemId }, update: data, create: { itemId, ...data } })
   return NextResponse.json(result)
 }
