@@ -1,1 +1,0 @@
-{"version":1,"functions":{"/api/auth/zion-login":{},"/api/auth/login":{},"/api/auth/otp-send":{},"/api/auth/otp-verify":{},"/api/auth/logout":{},"/api/checklist/items":{},"/api/admin/users":{},"/api/checklist/result":{},"/api/checklist":{},"/api/dashboard/summary":{}}}
