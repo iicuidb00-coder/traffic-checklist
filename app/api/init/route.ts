@@ -8,31 +8,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   try {
-    // 교회 시드
     const churches = [
-      { code: 'gwangju', name: '광주', order: 1 },
-      { code: 'mokpo', name: '목포', order: 2 },
-      { code: 'yeosu', name: '여수', order: 3 },
-      { code: 'suncheon', name: '순천', order: 4 },
-      { code: 'songha', name: '송하', order: 5 },
-      { code: 'gwangyang', name: '광양', order: 6 },
-      { code: 'haenam', name: '해남', order: 7 },
-      { code: 'naju', name: '나주', order: 8 },
+      { code: 'gwangju', name: '\uAD11\uC8FC', order: 1 },
+      { code: 'mokpo', name: '\uBAA9\uD3EC', order: 2 },
+      { code: 'yeosu', name: '\uC5EC\uC218', order: 3 },
+      { code: 'suncheon', name: '\uC21C\uCC9C', order: 4 },
+      { code: 'songha', name: '\uC1A1\uD558', order: 5 },
+      { code: 'gwangyang', name: '\uAD11\uC591', order: 6 },
+      { code: 'haenam', name: '\uD574\uB0A8', order: 7 },
+      { code: 'naju', name: '\uB098\uC8FC', order: 8 },
     ]
     for (const c of churches) {
       await prisma.church.upsert({ where: { code: c.code }, update: {}, create: c })
     }
-    // 중점사항 시드
     const focusAreas = [
-      { code: 'event_support', name: '행사시 교통업무 지원', order: 1 },
-      { code: 'org_operation', name: '상시조직 구성 및 운영', order: 2 },
-      { code: 'vehicle_mgmt', name: '차량 및 주차장 관리', order: 3 },
-      { code: 'church_support', name: '지교회 업무지원 / 부서원 충원 및 신앙관리', order: 4 },
+      { code: 'event_support', name: '\uD589\uC0AC\uC2DC \uAD50\uD1B5\uC5C5\uBB34 \uC9C0\uC6D0', order: 1 },
+      { code: 'org_operation', name: '\uC0C1\uC2DC\uC870\uC9C1 \uAD6C\uC131 \uBC0F \uC6B4\uC601', order: 2 },
+      { code: 'vehicle_mgmt', name: '\uCC28\uB7C9 \uBC0F \uC8FC\uCC28\uC7A5 \uAD00\uB9AC', order: 3 },
+      { code: 'church_support', name: '\uC9C0\uAD50\uD68C \uC5C5\uBB34\uC9C0\uC6D0 / \uBD80\uC11C\uC6D0 \uCDA9\uC6D0 \uBC0F \uC2E0\uC559\uAD00\uB9AC', order: 4 },
     ]
     for (const f of focusAreas) {
       await prisma.focusArea.upsert({ where: { code: f.code }, update: {}, create: f })
     }
-    return NextResponse.json({ ok: true, message: 'DB 초기화 완료' })
+    return NextResponse.json({ ok: true, message: 'DB \uCD08\uAE30\uD654 \uC644\uB8CC' })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
