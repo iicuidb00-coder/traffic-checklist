@@ -1,16 +1,5 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/checklist/[church]/page": "app/checklist/[church]/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/checklist/page": "app/checklist/page.js",
-  "/dashboard/[church]/page": "app/dashboard/[church]/page.js",
-  "/login/page": "app/login/page.js",
   "/page": "app/page.js",
-  "/api/auth/zion-login/route": "app/api/auth/zion-login/route.js",
-  "/api/auth/logout/route": "app/api/auth/logout/route.js",
-  "/api/checklist/items/route": "app/api/checklist/items/route.js",
-  "/api/checklist/route": "app/api/checklist/route.js",
-  "/api/admin/users/route": "app/api/admin/users/route.js",
-  "/api/checklist/result/route": "app/api/checklist/result/route.js",
-  "/api/dashboard/summary/route": "app/api/dashboard/summary/route.js"
+  "/login/page": "app/login/page.js"
 }
