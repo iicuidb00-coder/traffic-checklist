@@ -1,69 +1,76 @@
-import { redirect, notFound } from 'next/navigation'
-import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { notFound } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { MonthlyRateChart, FailTypeChart } from '@/components/charts/AchieveRateChart'
 import { CHURCHES } from '@/lib/constants'
 
-export default async function ChurchDashboardPage({ params }: { params: { church: string } }) {
-const session = { role: 'admin', churchId: null }
+export const dynamic = 'force-dynamic'
 
+export default async function ChurchDashboardPage({ params }: { params: { church: string } }) {
+  const session = { role: 'admin', churchId: null, name: '관리자' }
   const churchInfo = CHURCHES.find(c => c.code === params.church)
   if (!churchInfo) notFound()
 
-  const church = await prisma.church.findUnique({ where: { code: params.church } })
-  if (!church) notFound()
-
-  // 일반 사용자는 자기 교회만
-  if (session.role === 'member' && session.churchId !== church.id) redirect('/')
-
   const year = new Date().getFullYear()
 
-  const items = await prisma.checklistItem.findMany({
-    where: { churchId: church.id, year },
-    select: { month: true, focusAreaId: true },
-  })
-  const results = await prisma.checklistResult.findMany({
-    where: { churchId: church.id, year },
-    select: { month: true, isDone: true, failType: true,
-      achieveTypeSchedule: true, achieveTypeIntensive: true, achieveTypeHabit: true, achieveTypeRole: true },
-  })
+  let church: { id: string; name: string; code: string } | null = null
+  let months: { month: number; label: string; total: number; done: number; rate: number }[] = []
+  let quarters: { label: string; total: number; done: number; rate: number }[] = []
+  let failCounts: Record<string, number> = {}
+  let achieveCounts = { '계획준수': 0, '단기집중': 0, '습관기반': 0, '역할분담': 0 }
+  let total = 0, done = 0, rate = 0
 
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const m = i + 1
-    const mI = items.filter(x => x.month === m).length
-    const mR = results.filter(x => x.month === m)
-    const mD = mR.filter(x => x.isDone).length
-    return { month: m, label: `${m}월`, total: mI, done: mD, rate: mI > 0 ? Math.round((mD / mI) * 100) : 0 }
-  })
+  try {
+    church = await prisma.church.findUnique({ where: { code: params.church } })
+    if (church) {
+      const items = await prisma.checklistItem.findMany({
+        where: { churchId: church.id, year },
+        select: { month: true, focusAreaId: true },
+      })
+      const results = await prisma.checklistResult.findMany({
+        where: { churchId: church.id, year },
+        select: {
+          month: true, isDone: true, failType: true,
+          achieveTypeSchedule: true, achieveTypeIntensive: true,
+          achieveTypeHabit: true, achieveTypeRole: true,
+        },
+      })
 
-  // 분기별
-  const quarters = [
-    { label: '1분기', months: [1,2,3] }, { label: '2분기', months: [4,5,6] },
-    { label: '3분기', months: [7,8,9] }, { label: '4분기', months: [10,11,12] },
-  ].map(q => {
-    const qI = items.filter(i => q.months.includes(i.month)).length
-    const qD = results.filter(r => q.months.includes(r.month) && r.isDone).length
-    return { ...q, total: qI, done: qD, rate: qI > 0 ? Math.round((qD / qI) * 100) : 0 }
-  })
+      months = Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1
+        const mI = items.filter(x => x.month === m).length
+        const mR = results.filter(x => x.month === m)
+        const mD = mR.filter(x => x.isDone).length
+        return { month: m, label: `${m}월`, total: mI, done: mD, rate: mI > 0 ? Math.round((mD / mI) * 100) : 0 }
+      })
 
-  // 미달성 유형
-  const failCounts: Record<string, number> = {}
-  results.filter(r => !r.isDone && r.failType).forEach(r => {
-    failCounts[r.failType!] = (failCounts[r.failType!] ?? 0) + 1
-  })
+      quarters = [
+        { label: '1분기', months: [1,2,3] },
+        { label: '2분기', months: [4,5,6] },
+        { label: '3분기', months: [7,8,9] },
+        { label: '4분기', months: [10,11,12] },
+      ].map(q => {
+        const qI = items.filter(i => q.months.includes(i.month)).length
+        const qD = results.filter(r => q.months.includes(r.month) && r.isDone).length
+        return { label: q.label, total: qI, done: qD, rate: qI > 0 ? Math.round((qD / qI) * 100) : 0 }
+      })
 
-  // 달성 유형
-  const achieveCounts = {
-    '계획준수': results.filter(r => r.isDone && r.achieveTypeSchedule).length,
-    '단기집중': results.filter(r => r.isDone && r.achieveTypeIntensive).length,
-    '습관기반': results.filter(r => r.isDone && r.achieveTypeHabit).length,
-    '역할분담': results.filter(r => r.isDone && r.achieveTypeRole).length,
-  }
+      results.filter(r => !r.isDone && r.failType).forEach(r => {
+        failCounts[r.failType!] = (failCounts[r.failType!] ?? 0) + 1
+      })
 
-  const total = items.length
-  const done = results.filter(r => r.isDone).length
-  const rate = total > 0 ? Math.round((done / total) * 100) : 0
+      achieveCounts = {
+        '계획준수': results.filter(r => r.isDone && r.achieveTypeSchedule).length,
+        '단기집중': results.filter(r => r.isDone && r.achieveTypeIntensive).length,
+        '습관기반': results.filter(r => r.isDone && r.achieveTypeHabit).length,
+        '역할분담': results.filter(r => r.isDone && r.achieveTypeRole).length,
+      }
+
+      total = items.length
+      done = results.filter(r => r.isDone).length
+      rate = total > 0 ? Math.round((done / total) * 100) : 0
+    }
+  } catch {}
 
   return (
     <div className="flex min-h-screen">
@@ -71,7 +78,7 @@ const session = { role: 'admin', churchId: null }
       <main className="ml-60 flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">{church.name} 교회</h1>
+            <h1 className="text-2xl font-bold text-slate-800">{churchInfo.name} 교회</h1>
             <p className="text-slate-500 text-sm mt-1">{year}년 월간 체크리스트 분석</p>
           </div>
           <a href={`/checklist/${params.church}`}
@@ -80,7 +87,6 @@ const session = { role: 'admin', churchId: null }
           </a>
         </div>
 
-        {/* 연간 요약 */}
         <div className="grid grid-cols-4 gap-4 mb-8">
           {[
             { label: '연간 달성률', value: `${rate}%`, color: 'text-blue-600' },
@@ -95,7 +101,6 @@ const session = { role: 'admin', churchId: null }
           ))}
         </div>
 
-        {/* 분기별 현황 */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {quarters.map(q => (
             <div key={q.label} className="bg-white rounded-xl border border-slate-200 p-5">
@@ -111,7 +116,6 @@ const session = { role: 'admin', churchId: null }
           ))}
         </div>
 
-        {/* 월별 차트 */}
         <div className="grid grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-semibold text-slate-700 mb-4">월별 달성률</h3>
@@ -123,7 +127,6 @@ const session = { role: 'admin', churchId: null }
           </div>
         </div>
 
-        {/* 달성 유형 */}
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <h3 className="font-semibold text-slate-700 mb-4">달성 유형 분포</h3>
           <div className="grid grid-cols-4 gap-4">
