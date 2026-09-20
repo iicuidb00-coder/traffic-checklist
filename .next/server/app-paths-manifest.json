@@ -1,7 +1,5 @@
 {
   "/checklist/[church]/page": "app/checklist/[church]/page.js",
-  "/dashboard/[church]/page": "app/dashboard/[church]/page.js",
-  "/checklist/page": "app/checklist/page.js",
-  "/page": "app/page.js",
-  "/admin/page": "app/admin/page.js"
+  "/api/init/route": "app/api/init/route.js",
+  "/page": "app/page.js"
 }
