@@ -8,7 +8,7 @@ const {
   Public,
   getRuntime,
   skip
-} = require('@prisma/client/runtime/index-browser.js')
+} = require('./runtime/index-browser.js')
 
 
 const Prisma = {}
