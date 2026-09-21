@@ -1,5 +1,3 @@
 {
-  "/checklist/[church]/page": "app/checklist/[church]/page.js",
-  "/api/init/route": "app/api/init/route.js",
   "/page": "app/page.js"
 }

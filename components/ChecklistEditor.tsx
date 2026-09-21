@@ -1,6 +1,5 @@
 'use client'
 import { useState, useCallback } from 'react'
-import { Plus, Trash2, CheckCircle2, XCircle, ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { FOCUS_AREAS, ACHIEVE_TYPES, FAIL_TYPES, FAIL_DETAILS } from '@/lib/constants'
 
 type ResultData = {
@@ -35,8 +34,15 @@ export default function ChecklistEditor({ churchId, churchName, year, month, ini
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [msg, setMsg] = useState('')
+  const [msgType, setMsgType] = useState<'ok' | 'err'>('ok')
 
-  const showMsg = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 2500) }
+  const showMsg = (m: string, type: 'ok' | 'err' = 'ok') => {
+    setMsg(m); setMsgType(type); setTimeout(() => setMsg(''), 2500)
+  }
+
+  const totalItems = items.length
+  const doneItems = items.filter(i => i.result?.isDone).length
+  const rate = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0
 
   const addItem = async (focusAreaId: number) => {
     const title = newTitle[focusAreaId]?.trim()
@@ -48,7 +54,7 @@ export default function ChecklistEditor({ churchId, churchName, year, month, ini
     })
     if (res.ok) {
       const item = await res.json()
-      setItems(prev => [...prev, { ...item, result: null }])
+      setItems(prev => [...prev, { ...item, focusAreaId: item.focus_area_id ?? focusAreaId, result: null }])
       setNewTitle(p => ({ ...p, [focusAreaId]: '' }))
       setNewTarget(p => ({ ...p, [focusAreaId]: '' }))
       showMsg('항목이 추가되었습니다')
@@ -62,19 +68,12 @@ export default function ChecklistEditor({ churchId, churchName, year, month, ini
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     })
-    if (res.ok) {
-      setItems(prev => prev.filter(i => i.id !== id))
-      showMsg('삭제되었습니다')
-    }
+    if (res.ok) { setItems(prev => prev.filter(i => i.id !== id)); showMsg('삭제되었습니다') }
   }
 
   const updateResult = useCallback(async (itemId: string, data: Partial<ResultData>) => {
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
-    const current = item.result ?? { isDone: false, achieveTypes: [], failType: null, failDetails: [], note: '' }
-    const next = { ...current, ...data }
-    setItems(prev => prev.map(i => i.id === itemId ? { ...i, result: next } : i))
-  }, [items])
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, result: { ...(i.result ?? { isDone: false, achieveTypes: [], failType: null, failDetails: [], note: '' }), ...data } } : i))
+  }, [])
 
   const saveResult = async (itemId: string) => {
     const item = items.find(i => i.id === itemId)
@@ -87,223 +86,239 @@ export default function ChecklistEditor({ churchId, churchName, year, month, ini
         body: JSON.stringify({ itemId, ...item.result }),
       })
       showMsg('저장되었습니다')
-    } finally {
-      setSaving(p => ({ ...p, [itemId]: false }))
-    }
+    } catch { showMsg('저장 실패', 'err') }
+    finally { setSaving(p => ({ ...p, [itemId]: false })) }
   }
-
-  const toggleExpand = (id: string) => setExpanded(p => ({ ...p, [id]: !p[id] }))
-
-  const totalItems = items.length
-  const doneItems = items.filter(i => i.result?.isDone).length
-  const rate = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0
 
   return (
     <div>
-      {/* 헤더 요약 */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-800">{churchName} — {year}년 {month}월</h2>
-          <p className="text-slate-500 text-sm mt-0.5">총 {totalItems}개 항목 · {doneItems}개 달성</p>
+      {/* 헤더 */}
+      <div className="stat-strip" style={{ marginBottom: 16 }}>
+        <div className="stat">
+          <div className="stat-top"><div className="stat-dot" style={{ background: 'var(--accent)' }} /><div className="stat-label">{churchName} · {year}년 {month}월</div></div>
+          <div className="stat-value" style={{ color: rate >= 80 ? 'var(--ok)' : rate >= 60 ? 'var(--accent)' : rate >= 40 ? 'var(--warn)' : 'var(--bad)' }}>{rate}%</div>
+          <div className="stat-delta">{doneItems} / {totalItems} 달성</div>
         </div>
-        <div className="text-right">
-          <div className={`text-3xl font-bold ${rate >= 80 ? 'text-green-600' : rate >= 60 ? 'text-blue-600' : rate >= 40 ? 'text-amber-600' : 'text-red-500'}`}>
-            {rate}%
-          </div>
-          <div className="w-32 h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
-            <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${rate}%` }} />
-          </div>
+        <div className="stat">
+          <div className="stat-top"><div className="stat-dot" style={{ background: 'var(--ok)' }} /><div className="stat-label">달성 항목</div></div>
+          <div className="stat-value" style={{ color: 'var(--ok)' }}>{doneItems}개</div>
+          <div className="stat-delta">체크 완료</div>
+        </div>
+        <div className="stat">
+          <div className="stat-top"><div className="stat-dot" style={{ background: 'var(--bad)' }} /><div className="stat-label">미달성 항목</div></div>
+          <div className="stat-value" style={{ color: 'var(--bad)' }}>{totalItems - doneItems}개</div>
+          <div className="stat-delta">추가 확인 필요</div>
+        </div>
+        <div className="stat">
+          <div className="stat-top"><div className="stat-dot" style={{ background: 'var(--neu)' }} /><div className="stat-label">전체 항목</div></div>
+          <div className="stat-value">{totalItems}개</div>
+          <div className="stat-delta">이번 달 계획</div>
         </div>
       </div>
 
       {msg && (
-        <div className="mb-4 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm border border-blue-200">{msg}</div>
+        <div className={`badge ${msgType === 'ok' ? 'success' : 'danger'}`} style={{ marginBottom: 12, display: 'block', padding: '8px 12px', borderRadius: 6 }}>
+          {msg}
+        </div>
       )}
 
-      {/* 중점사항별 항목 */}
       {FOCUS_AREAS.map(fa => {
         const faItems = items.filter(i => i.focusAreaId === fa.id)
+        const faDone = faItems.filter(i => i.result?.isDone).length
+
         return (
-          <div key={fa.id} className="bg-white rounded-xl border border-slate-200 mb-4 overflow-hidden">
-            <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">{fa.id}</span>
-                <span className="font-semibold text-slate-700 text-sm">{fa.name}</span>
-              </div>
-              <span className="text-xs text-slate-400">{faItems.filter(i => i.result?.isDone).length}/{faItems.length}</span>
+          <div key={fa.id} className="panel" style={{ marginBottom: 12 }}>
+            <div className="panel-head">
+              <div className="gem m" style={{ background: 'var(--accent-weak)', color: 'var(--accent-ink)', fontWeight: 800 }}>{fa.id}</div>
+              <span className="panel-title">{fa.name}</span>
+              <span className="panel-sub">
+                <span className={`badge ${faDone === faItems.length && faItems.length > 0 ? 'success' : 'neutral'}`}>
+                  {faDone}/{faItems.length}
+                </span>
+              </span>
             </div>
 
-            <div className="divide-y divide-slate-100">
-              {faItems.length === 0 && (
-                <div className="px-5 py-4 text-slate-400 text-sm text-center">항목이 없습니다</div>
-              )}
-              {faItems.map(item => {
-                const r = item.result ?? { isDone: false, achieveTypes: [], failType: null, failDetails: [], note: '' }
-                const isOpen = expanded[item.id]
-                return (
-                  <div key={item.id}>
-                    {/* 항목 행 */}
-                    <div className="px-5 py-3 flex items-center gap-3">
-                      {/* 달성 토글 */}
-                      <button
-                        disabled={readonly}
-                        onClick={() => updateResult(item.id, { isDone: !r.isDone })}
-                        className={`flex-shrink-0 transition-colors ${r.isDone ? 'text-green-500' : 'text-slate-300 hover:text-slate-400'}`}
-                      >
-                        <CheckCircle2 size={22} fill={r.isDone ? 'currentColor' : 'none'} />
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${r.isDone ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.title}</p>
-                        {item.targetDate && (
-                          <p className="text-xs text-slate-400 mt-0.5">📅 {item.targetDate}</p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {r.isDone ? (
-                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">달성</span>
-                        ) : r.failType ? (
-                          <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded-full">미달성</span>
-                        ) : null}
-
-                        {!readonly && (
-                          <>
-                            <button onClick={() => toggleExpand(item.id)} className="text-slate-400 hover:text-blue-500 p-1">
-                              {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            <div className="tbl-wrap">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th style={{ width: 40 }}>완료</th>
+                    <th>월간 추진 리스트</th>
+                    <th style={{ width: 120 }}>목표일자</th>
+                    <th style={{ width: 80 }}>상태</th>
+                    <th style={{ width: 80 }}>상세</th>
+                    {!readonly && <th style={{ width: 50 }}>삭제</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {faItems.length === 0 ? (
+                    <tr><td colSpan={readonly ? 5 : 6} style={{ textAlign: 'center', color: 'var(--ink-3)', padding: '20px' }}>항목이 없습니다</td></tr>
+                  ) : faItems.map(item => {
+                    const r = item.result ?? { isDone: false, achieveTypes: [], failType: null, failDetails: [], note: '' }
+                    const isOpen = expanded[item.id]
+                    return (
+                      <>
+                        <tr key={item.id} style={{ background: r.isDone ? 'var(--ok-bg)' : undefined }}>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              disabled={readonly}
+                              onClick={() => updateResult(item.id, { isDone: !r.isDone })}
+                              style={{ background: 'none', border: 'none', cursor: readonly ? 'default' : 'pointer', fontSize: 18 }}
+                            >
+                              {r.isDone ? '✅' : '⬜'}
                             </button>
-                            <button onClick={() => deleteItem(item.id)} className="text-slate-300 hover:text-red-500 p-1">
-                              <Trash2 size={14} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 상세 패널 */}
-                    {isOpen && !readonly && (
-                      <div className="bg-slate-50 border-t border-slate-100 px-5 py-4 space-y-4">
-                        {r.isDone ? (
-                          <div>
-                            <p className="text-xs font-semibold text-slate-600 mb-2">달성 유형 (복수 선택)</p>
-                            <div className="flex flex-wrap gap-2">
-                              {ACHIEVE_TYPES.map(t => (
-                                <label key={t.key} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs cursor-pointer border transition-colors ${
-                                  r.achieveTypes?.includes(t.key) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
-                                }`}>
-                                  <input type="checkbox" className="hidden"
-                                    checked={r.achieveTypes?.includes(t.key) ?? false}
-                                    onChange={e => {
-                                      const next = e.target.checked
-                                        ? [...(r.achieveTypes ?? []), t.key]
-                                        : (r.achieveTypes ?? []).filter(x => x !== t.key)
-                                      updateResult(item.id, { achieveTypes: next })
-                                    }}
-                                  />
-                                  {t.label}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-xs font-semibold text-slate-600 mb-2">미달성 유형</p>
-                              <div className="flex flex-wrap gap-2">
-                                {FAIL_TYPES.map(t => (
-                                  <label key={t.key} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs cursor-pointer border transition-colors ${
-                                    r.failType === t.key ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-600 border-slate-200 hover:border-red-300'
-                                  }`}>
-                                    <input type="radio" name={`failType-${item.id}`} className="hidden"
-                                      checked={r.failType === t.key}
-                                      onChange={() => updateResult(item.id, { failType: t.key, failDetails: [] })}
-                                    />
-                                    {t.label}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                            {r.failType && (
-                              <div>
-                                <p className="text-xs font-semibold text-slate-600 mb-2">세부 원인</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {FAIL_DETAILS.filter(d => d.group === r.failType).map(d => (
-                                    <label key={d.key} className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs cursor-pointer border transition-colors ${
-                                      r.failDetails?.includes(d.key) ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-500 border-slate-200 hover:border-orange-300'
-                                    }`}>
-                                      <input type="checkbox" className="hidden"
-                                        checked={r.failDetails?.includes(d.key) ?? false}
-                                        onChange={e => {
-                                          const next = e.target.checked
-                                            ? [...(r.failDetails ?? []), d.key]
-                                            : (r.failDetails ?? []).filter(x => x !== d.key)
-                                          updateResult(item.id, { failDetails: next })
-                                        }}
-                                      />
-                                      {d.label}
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
+                          </td>
+                          <td style={{ textDecoration: r.isDone ? 'line-through' : 'none', color: r.isDone ? 'var(--ink-3)' : 'var(--ink)' }}>
+                            {item.title}
+                          </td>
+                          <td style={{ color: 'var(--ink-3)', fontSize: 12 }}>{item.targetDate ?? '-'}</td>
+                          <td>
+                            {r.isDone
+                              ? <span className="badge success">달성</span>
+                              : r.failType
+                              ? <span className="badge danger">미달성</span>
+                              : <span className="badge neutral">미입력</span>}
+                          </td>
+                          <td>
+                            {!readonly && (
+                              <button
+                                onClick={() => setExpanded(p => ({ ...p, [item.id]: !p[item.id] }))}
+                                className="btn"
+                                style={{ height: 26, padding: '0 10px', fontSize: 11 }}
+                              >
+                                {isOpen ? '닫기' : '입력'}
+                              </button>
                             )}
-                          </div>
+                          </td>
+                          {!readonly && (
+                            <td>
+                              <button onClick={() => deleteItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--bad)', fontSize: 14 }}>✕</button>
+                            </td>
+                          )}
+                        </tr>
+
+                        {isOpen && !readonly && (
+                          <tr key={`${item.id}-detail`}>
+                            <td colSpan={6} style={{ background: 'var(--surface-2)', padding: '16px' }}>
+                              {r.isDone ? (
+                                <div>
+                                  <div className="overline" style={{ marginBottom: 8 }}>달성 유형 (복수 선택)</div>
+                                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                    {ACHIEVE_TYPES.map(t => (
+                                      <label key={t.key} style={{ cursor: 'pointer' }}>
+                                        <input type="checkbox" className="hidden"
+                                          checked={r.achieveTypes?.includes(t.key) ?? false}
+                                          onChange={e => {
+                                            const next = e.target.checked
+                                              ? [...(r.achieveTypes ?? []), t.key]
+                                              : (r.achieveTypes ?? []).filter(x => x !== t.key)
+                                            updateResult(item.id, { achieveTypes: next })
+                                          }}
+                                          style={{ display: 'none' }}
+                                        />
+                                        <span className={`chip`} style={{
+                                          background: r.achieveTypes?.includes(t.key) ? 'var(--accent)' : 'var(--surface)',
+                                          color: r.achieveTypes?.includes(t.key) ? '#fff' : 'var(--ink-2)',
+                                          borderColor: r.achieveTypes?.includes(t.key) ? 'var(--accent)' : 'var(--line-2)',
+                                          cursor: 'pointer'
+                                        }}>
+                                          {t.label}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="overline" style={{ marginBottom: 8 }}>미달성 유형</div>
+                                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                    {FAIL_TYPES.map(t => (
+                                      <label key={t.key} style={{ cursor: 'pointer' }}>
+                                        <input type="radio" name={`failType-${item.id}`} style={{ display: 'none' }}
+                                          checked={r.failType === t.key}
+                                          onChange={() => updateResult(item.id, { failType: t.key, failDetails: [] })}
+                                        />
+                                        <span className="chip" style={{
+                                          background: r.failType === t.key ? 'var(--bad)' : 'var(--surface)',
+                                          color: r.failType === t.key ? '#fff' : 'var(--ink-2)',
+                                          borderColor: r.failType === t.key ? 'var(--bad)' : 'var(--line-2)',
+                                          cursor: 'pointer'
+                                        }}>
+                                          {t.label}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                  {r.failType && (
+                                    <>
+                                      <div className="overline" style={{ marginBottom: 8 }}>세부 원인</div>
+                                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                                        {FAIL_DETAILS.filter(d => d.group === r.failType).map(d => (
+                                          <label key={d.key} style={{ cursor: 'pointer' }}>
+                                            <input type="checkbox" style={{ display: 'none' }}
+                                              checked={r.failDetails?.includes(d.key) ?? false}
+                                              onChange={e => {
+                                                const next = e.target.checked
+                                                  ? [...(r.failDetails ?? []), d.key]
+                                                  : (r.failDetails ?? []).filter(x => x !== d.key)
+                                                updateResult(item.id, { failDetails: next })
+                                              }}
+                                            />
+                                            <span className="badge" style={{
+                                              background: r.failDetails?.includes(d.key) ? 'var(--warn)' : 'var(--warn-bg)',
+                                              color: r.failDetails?.includes(d.key) ? '#fff' : 'var(--warn)',
+                                              cursor: 'pointer', height: 'auto', padding: '3px 8px'
+                                            }}>
+                                              {d.label}
+                                            </span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              <div style={{ marginBottom: 12 }}>
+                                <div className="overline" style={{ marginBottom: 6 }}>비고</div>
+                                <textarea rows={2} value={r.note ?? ''}
+                                  onChange={e => updateResult(item.id, { note: e.target.value })}
+                                  placeholder="특이사항을 입력하세요"
+                                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--line-2)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', resize: 'none', background: 'var(--surface)' }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => saveResult(item.id)} disabled={saving[item.id]} className="btn primary">
+                                  {saving[item.id] ? '저장 중...' : '저장'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-
-                        {/* 비고 */}
-                        <div>
-                          <p className="text-xs font-semibold text-slate-600 mb-1.5">비고 / 특이사항</p>
-                          <textarea
-                            rows={2}
-                            value={r.note ?? ''}
-                            onChange={e => updateResult(item.id, { note: e.target.value })}
-                            placeholder="특이사항을 입력하세요"
-                            className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
-                          />
-                        </div>
-
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => saveResult(item.id)}
-                            disabled={saving[item.id]}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
-                          >
-                            <Save size={14} />
-                            {saving[item.id] ? '저장 중...' : '저장'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                      </>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            {/* 항목 추가 */}
             {!readonly && (
-              <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTitle[fa.id] ?? ''}
-                    onChange={e => setNewTitle(p => ({ ...p, [fa.id]: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter') addItem(fa.id) }}
-                    placeholder="월간 추진 리스트 항목 추가..."
-                    className="flex-1 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
-                  <input
-                    type="text"
-                    value={newTarget[fa.id] ?? ''}
-                    onChange={e => setNewTarget(p => ({ ...p, [fa.id]: e.target.value }))}
-                    placeholder="목표일자"
-                    className="w-28 text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
-                  <button
-                    onClick={() => addItem(fa.id)}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
+              <div className="panel-body" style={{ borderTop: '1px solid var(--line)', display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={newTitle[fa.id] ?? ''}
+                  onChange={e => setNewTitle(p => ({ ...p, [fa.id]: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') addItem(fa.id) }}
+                  placeholder="월간 추진 리스트 항목 추가..."
+                  style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--line-2)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
+                />
+                <input
+                  type="text"
+                  value={newTarget[fa.id] ?? ''}
+                  onChange={e => setNewTarget(p => ({ ...p, [fa.id]: e.target.value }))}
+                  placeholder="목표일자"
+                  style={{ width: 110, padding: '7px 10px', border: '1px solid var(--line-2)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit' }}
+                />
+                <button onClick={() => addItem(fa.id)} className="btn primary">+ 추가</button>
               </div>
             )}
           </div>

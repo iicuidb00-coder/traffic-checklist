@@ -47,89 +47,163 @@ export default async function DashboardPage() {
     })
   } catch {}
 
+  const thisMonthRate = thisMonthItems > 0 ? Math.round((thisMonthDone / thisMonthItems) * 100) : 0
+
   return (
-    <div className="flex min-h-screen">
+    <div className="app">
       <Sidebar role={session.role} churchId={session.churchId} />
-      <main className="ml-60 flex-1 p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">전체 대시보드</h1>
-          <p className="text-slate-500 text-sm mt-1">{year}년 · 베드로 지파 8개 교회 종합 현황</p>
-        </div>
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[
-            { label: '연간 달성률', value: `${overallRate}%`, sub: `${totalDone}/${totalItems}`, color: 'text-blue-600' },
-            { label: '이번 달 달성률', value: thisMonthItems > 0 ? `${Math.round((thisMonthDone/thisMonthItems)*100)}%` : '-', sub: `${thisMonthDone}/${thisMonthItems}`, color: 'text-green-600' },
-            { label: '참여 교회', value: `${churches.length}개`, sub: '광주·목포·여수·순천 외', color: 'text-purple-600' },
-            { label: '총 추진 항목', value: `${totalItems}개`, sub: `${year}년 누계`, color: 'text-amber-600' },
-          ].map((card) => (
-            <div key={card.label} className="bg-white rounded-xl border border-slate-200 p-5">
-              <p className="text-slate-500 text-xs font-medium">{card.label}</p>
-              <p className={`text-3xl font-bold mt-1 ${card.color}`}>{card.value}</p>
-              <p className="text-slate-400 text-xs mt-1">{card.sub}</p>
-            </div>
-          ))}
-        </div>
-        {churchData.length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="bg-white rounded-xl border border-slate-200 p-6">
-                <h3 className="font-semibold text-slate-700 mb-4">{year}년 교회별 달성률</h3>
-                <ChurchRateChart data={churchData} />
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-6">
-                <h3 className="font-semibold text-slate-700 mb-4">교회별 월별 추이</h3>
-                <ChurchTrendChart data={churchData} />
-              </div>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-700">{year}년 교회별 종합 현황</h3>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 text-xs">
-                    <th className="px-5 py-3 text-left">교회</th>
-                    <th className="px-4 py-3 text-center">총 항목</th>
-                    <th className="px-4 py-3 text-center">달성</th>
-                    <th className="px-4 py-3 text-center">달성률</th>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <th key={i} className="px-2 py-3 text-center w-10">{i+1}월</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {churchData.map(c => (
-                    <tr key={c.churchId} className="hover:bg-slate-50">
-                      <td className="px-5 py-3 font-semibold text-slate-700">
-                        <a href={`/dashboard/${c.churchCode}`} className="hover:text-blue-600">{c.churchName}</a>
-                      </td>
-                      <td className="px-4 py-3 text-center">{c.total}</td>
-                      <td className="px-4 py-3 text-center">{c.done}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`font-bold ${c.rate >= 80 ? 'text-green-600' : c.rate >= 60 ? 'text-blue-600' : c.rate >= 40 ? 'text-amber-600' : 'text-red-500'}`}>
-                          {c.rate}%
-                        </span>
-                      </td>
-                      {c.monthlyBreakdown.map(m => (
-                        <td key={m.month} className="px-2 py-3 text-center text-xs">
-                          {m.rate !== null
-                            ? <span className={m.rate >= 80 ? 'text-green-600' : m.rate >= 60 ? 'text-blue-500' : m.rate > 0 ? 'text-amber-500' : 'text-red-400'}>{m.rate}%</span>
-                            : <span className="text-slate-200">-</span>}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
-          <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
-            <p className="text-slate-400 text-lg">데이터가 없습니다</p>
-            <p className="text-slate-300 text-sm mt-2">DB 초기화 후 체크리스트를 입력하면 표시됩니다</p>
+      <div className="main">
+        <header className="topbar">
+          <div>
+            <div className="crumb"><b>베드로 지파</b> / 교통과</div>
+            <div className="page-title">전체 대시보드</div>
           </div>
-        )}
-      </main>
+          <div className="topbar-spacer" />
+          <span className="badge neutral">{year}년 {month}월</span>
+        </header>
+
+        <div className="content">
+          {/* 통계 카드 */}
+          <div className="stat-strip" style={{ marginBottom: 16 }}>
+            <div className="stat">
+              <div className="stat-top">
+                <div className="stat-dot" style={{ background: 'var(--accent)' }} />
+                <div className="stat-label">연간 달성률</div>
+              </div>
+              <div className="stat-value" style={{ color: 'var(--accent)' }}>{overallRate}%</div>
+              <div className="stat-delta">{totalDone}/{totalItems} 항목</div>
+            </div>
+            <div className="stat">
+              <div className="stat-top">
+                <div className="stat-dot" style={{ background: 'var(--ok)' }} />
+                <div className="stat-label">이번 달 달성률</div>
+              </div>
+              <div className="stat-value" style={{ color: 'var(--ok)' }}>{thisMonthRate}%</div>
+              <div className="stat-delta">{thisMonthDone}/{thisMonthItems} 항목</div>
+            </div>
+            <div className="stat">
+              <div className="stat-top">
+                <div className="stat-dot" style={{ background: 'var(--warn)' }} />
+                <div className="stat-label">참여 교회</div>
+              </div>
+              <div className="stat-value">{churches.length}개</div>
+              <div className="stat-delta">광주·목포·여수·순천 외</div>
+            </div>
+            <div className="stat">
+              <div className="stat-top">
+                <div className="stat-dot" style={{ background: 'var(--neu)' }} />
+                <div className="stat-label">총 추진 항목</div>
+              </div>
+              <div className="stat-value">{totalItems}개</div>
+              <div className="stat-delta">{year}년 누계</div>
+            </div>
+          </div>
+
+          {churchData.length > 0 ? (
+            <>
+              {/* 차트 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div className="panel">
+                  <div className="panel-head">
+                    <span className="panel-title">{year}년 교회별 달성률</span>
+                  </div>
+                  <div className="panel-body">
+                    <ChurchRateChart data={churchData} />
+                  </div>
+                </div>
+                <div className="panel">
+                  <div className="panel-head">
+                    <span className="panel-title">교회별 월별 추이</span>
+                  </div>
+                  <div className="panel-body">
+                    <ChurchTrendChart data={churchData} />
+                  </div>
+                </div>
+              </div>
+
+              {/* 교회별 달성률 바 */}
+              <div className="panel" style={{ marginBottom: 16 }}>
+                <div className="panel-head">
+                  <span className="panel-title">{year}년 교회별 종합 현황</span>
+                  <span className="panel-sub">달성률 기준</span>
+                </div>
+                <div className="panel-body bars">
+                  {churchData.map(c => (
+                    <a key={c.churchId} href={`/dashboard/${c.churchCode}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <div className="bar-row" style={{ cursor: 'pointer' }}>
+                        <div className="bar-name">
+                          <div className="gem m" style={{
+                            background: c.rate >= 80 ? 'var(--ok-bg)' : c.rate >= 60 ? 'var(--accent-weak)' : c.rate >= 40 ? 'var(--warn-bg)' : 'var(--bad-bg)',
+                            color: c.rate >= 80 ? 'var(--ok)' : c.rate >= 60 ? 'var(--accent)' : c.rate >= 40 ? 'var(--warn)' : 'var(--bad)',
+                          }}>
+                            {c.churchName.charAt(0)}
+                          </div>
+                          <span className="nm">{c.churchName}</span>
+                        </div>
+                        <div className="bar-track">
+                          <div className="bar-fill" style={{
+                            width: `${c.rate}%`,
+                            background: c.rate >= 80 ? 'var(--ok)' : c.rate >= 60 ? 'var(--accent)' : c.rate >= 40 ? 'var(--warn)' : 'var(--bad)',
+                          }} />
+                        </div>
+                        <div className="bar-val">
+                          <b>{c.done}</b>
+                          <span className="pct">/ {c.total} ({c.rate}%)</span>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* 월별 테이블 */}
+              <div className="panel">
+                <div className="panel-head">
+                  <span className="panel-title">월별 상세 현황</span>
+                </div>
+                <div className="tbl-wrap">
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th>교회</th>
+                        <th>연간</th>
+                        {Array.from({ length: 12 }, (_, i) => <th key={i}>{i+1}월</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {churchData.map(c => (
+                        <tr key={c.churchId} tabIndex={0} onClick={() => window.location.href = `/dashboard/${c.churchCode}`} style={{ cursor: 'pointer' }}>
+                          <td><strong>{c.churchName}</strong></td>
+                          <td>
+                            <span className={`badge ${c.rate >= 80 ? 'success' : c.rate >= 60 ? 'brand' : c.rate >= 40 ? 'warning' : c.rate > 0 ? 'danger' : 'neutral'}`}>
+                              {c.rate}%
+                            </span>
+                          </td>
+                          {c.monthlyBreakdown.map(m => (
+                            <td key={m.month} className="tnum" style={{ textAlign: 'center' }}>
+                              {m.rate !== null
+                                ? <span style={{ color: m.rate >= 80 ? 'var(--ok)' : m.rate >= 60 ? 'var(--accent)' : m.rate > 0 ? 'var(--warn)' : 'var(--bad)', fontWeight: 600 }}>{m.rate}%</span>
+                                : <span style={{ color: 'var(--line-2)' }}>-</span>}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="panel">
+              <div className="panel-body" style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+                <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>데이터가 없습니다</div>
+                <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>DB 초기화 후 체크리스트를 입력하면 표시됩니다</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

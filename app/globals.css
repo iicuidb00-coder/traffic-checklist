@@ -1,3 +1,6 @@
+@import url("/zcs/zcs.css");
+@import url("/zcs/zcs-accessibility.css");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

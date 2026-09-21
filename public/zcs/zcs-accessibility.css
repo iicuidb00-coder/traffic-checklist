@@ -1,0 +1,79 @@
+/* VOSS-provided additive accessibility layer. Load after zcs.css. */
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.pg:focus-visible,
+.tab:focus-visible,
+.check:focus-visible,
+.switch:focus-visible,
+.masked .mreveal:focus-visible,
+.modal-head .mx:focus-visible,
+.drawer-head .dx:focus-visible,
+.input-wrap .affix:focus-visible,
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.check input:focus-visible + .box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebar .nav-item:focus-visible {
+  outline-color: #8fa6e6;
+}
+
+table.tbl tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-weak);
+}
+
+.shell-hamburger,
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-hamburger {
+    display: grid;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 120;
+    width: 248px;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+    box-shadow: 8px 0 28px rgba(16, 20, 27, 0.28);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop.is-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(16, 20, 27, 0.42);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
