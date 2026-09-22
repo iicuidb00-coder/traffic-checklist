@@ -1,15 +1,22 @@
 import { Pool } from 'pg'
 
-const pool = new Pool({
-  connectionString: process.env.VPG_DATABASE_URL,
-  ssl: process.env.VPG_SSLMODE === 'disable' ? false : undefined,
-})
+let _pool: Pool | null = null
 
-export default pool
+export function getPool(): Pool {
+  if (!_pool) {
+    _pool = new Pool({
+      connectionString: process.env.VPG_DATABASE_URL,
+      ssl: process.env.VPG_SSLMODE === 'disable' ? false : { rejectUnauthorized: false },
+    })
+  }
+  return _pool
+}
+
+export default getPool()
 
 // DB 초기화 (테이블 생성 + 시드)
 export async function initDatabase() {
-  const client = await pool.connect()
+  const client = await getPool.connect()
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS churches (
