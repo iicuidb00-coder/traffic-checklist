@@ -55,7 +55,15 @@ export default async function DashboardPage() {
       } finally {
         client.release()
       }
-    } catch {}
+    } catch (e) {
+      return (
+        <div style={{ padding: 40, fontFamily: 'monospace' }}>
+          <h1>오류 발생</h1>
+          <pre>{String(e)}</pre>
+          <pre>{(e as Error).stack}</pre>
+        </div>
+      )
+    }
 
   const thisMonthRate = thisMonthItems > 0 ? Math.round((thisMonthDone / thisMonthItems) * 100) : 0
 
