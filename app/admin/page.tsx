@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
 import Sidebar from '@/components/Sidebar'
 import AdminUserTable from '@/components/AdminUserTable'
 
@@ -11,16 +11,20 @@ export default async function AdminPage() {
   let churches: { id: string; name: string }[] = []
 
   try {
-    const rawUsers = await prisma.user.findMany({
-      include: { church: true },
-      orderBy: { createdAt: 'asc' },
-    })
-    churches = await prisma.church.findMany({ orderBy: { order: 'asc' } })
-    users = rawUsers.map(u => ({
-      id: u.id, name: u.name, zionNewNo: u.zionNewNo,
-      role: u.role, churchId: u.churchId,
-      churchName: (u.church as { name: string } | null)?.name ?? null,
-    }))
+    const client = await pool.connect()
+    try {
+      const { rows: rawUsers } = await client.query(
+        `SELECT u.*, c.name as church_name FROM users u LEFT JOIN churches c ON u.church_id = c.id ORDER BY u.created_at`
+      )
+      const { rows: churchRows } = await client.query(`SELECT id, name FROM churches ORDER BY "order"`)
+      churches = churchRows
+      users = rawUsers.map((u: Record<string, string>) => ({
+        id: u.id, name: u.name, zionNewNo: u.zion_new_no,
+        role: u.role, churchId: u.church_id, churchName: u.church_name ?? null,
+      }))
+    } finally {
+      client.release()
+    }
   } catch {}
 
   return (

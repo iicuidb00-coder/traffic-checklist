@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { MonthlyRateChart, FailTypeChart } from '@/components/charts/AchieveRateChart'
@@ -21,54 +21,52 @@ export default async function ChurchDashboardPage({ params }: { params: { church
   let total = 0, done = 0, rate = 0
 
   try {
-    church = await prisma.church.findUnique({ where: { code: params.church } })
-    if (church) {
-      const items = await prisma.checklistItem.findMany({
-        where: { churchId: church.id, year },
-        select: { month: true, focusAreaId: true },
-      })
-      const results = await prisma.checklistResult.findMany({
-        where: { churchId: church.id, year },
-        select: {
-          month: true, isDone: true, failType: true,
-          achieveTypeSchedule: true, achieveTypeIntensive: true,
-          achieveTypeHabit: true, achieveTypeRole: true,
-        },
-      })
-
-      months = Array.from({ length: 12 }, (_, i) => {
-        const m = i + 1
-        const mI = items.filter(x => x.month === m).length
-        const mR = results.filter(x => x.month === m)
-        const mD = mR.filter(x => x.isDone).length
-        return { month: m, label: `${m}월`, total: mI, done: mD, rate: mI > 0 ? Math.round((mD / mI) * 100) : 0 }
-      })
-
-      quarters = [
-        { label: '1분기', months: [1,2,3] },
-        { label: '2분기', months: [4,5,6] },
-        { label: '3분기', months: [7,8,9] },
-        { label: '4분기', months: [10,11,12] },
-      ].map(q => {
-        const qI = items.filter(i => q.months.includes(i.month)).length
-        const qD = results.filter(r => q.months.includes(r.month) && r.isDone).length
-        return { label: q.label, total: qI, done: qD, rate: qI > 0 ? Math.round((qD / qI) * 100) : 0 }
-      })
-
-      results.filter(r => !r.isDone && r.failType).forEach(r => {
-        failCounts[r.failType!] = (failCounts[r.failType!] ?? 0) + 1
-      })
-
-      achieveCounts = {
-        '계획준수': results.filter(r => r.isDone && r.achieveTypeSchedule).length,
-        '단기집중': results.filter(r => r.isDone && r.achieveTypeIntensive).length,
-        '습관기반': results.filter(r => r.isDone && r.achieveTypeHabit).length,
-        '역할분담': results.filter(r => r.isDone && r.achieveTypeRole).length,
+    const client = await pool.connect()
+    try {
+      const { rows } = await client.query(`SELECT * FROM churches WHERE code = $1`, [params.church])
+      church = rows[0] ?? null
+      if (church) {
+        const { rows: itemRows } = await client.query(
+          `SELECT month, focus_area_id FROM checklist_items WHERE church_id = $1 AND year = $2`,
+          [church.id, year]
+        )
+        const { rows: resultRows } = await client.query(
+          `SELECT month, is_done, fail_type, achieve_type_schedule, achieve_type_intensive, achieve_type_habit, achieve_type_role
+           FROM checklist_results WHERE church_id = $1 AND year = $2`,
+          [church.id, year]
+        )
+        months = Array.from({ length: 12 }, (_, i) => {
+          const m = i + 1
+          const mI = itemRows.filter((x: { month: number }) => x.month === m).length
+          const mR = resultRows.filter((x: { month: number }) => x.month === m)
+          const mD = mR.filter((x: { is_done: boolean }) => x.is_done).length
+          return { month: m, label: `${m}월`, total: mI, done: mD, rate: mI > 0 ? Math.round((mD / mI) * 100) : 0 }
+        })
+        quarters = [
+          { label: '1분기', months: [1,2,3] },
+          { label: '2분기', months: [4,5,6] },
+          { label: '3분기', months: [7,8,9] },
+          { label: '4분기', months: [10,11,12] },
+        ].map(q => {
+          const qI = itemRows.filter((i: { month: number }) => q.months.includes(i.month)).length
+          const qD = resultRows.filter((r: { month: number; is_done: boolean }) => q.months.includes(r.month) && r.is_done).length
+          return { label: q.label, total: qI, done: qD, rate: qI > 0 ? Math.round((qD / qI) * 100) : 0 }
+        })
+        resultRows.filter((r: { is_done: boolean; fail_type: string }) => !r.is_done && r.fail_type).forEach((r: { fail_type: string }) => {
+          failCounts[r.fail_type] = (failCounts[r.fail_type] ?? 0) + 1
+        })
+        achieveCounts = {
+          '계획준수': resultRows.filter((r: { is_done: boolean; achieve_type_schedule: boolean }) => r.is_done && r.achieve_type_schedule).length,
+          '단기집중': resultRows.filter((r: { is_done: boolean; achieve_type_intensive: boolean }) => r.is_done && r.achieve_type_intensive).length,
+          '습관기반': resultRows.filter((r: { is_done: boolean; achieve_type_habit: boolean }) => r.is_done && r.achieve_type_habit).length,
+          '역할분담': resultRows.filter((r: { is_done: boolean; achieve_type_role: boolean }) => r.is_done && r.achieve_type_role).length,
+        }
+        total = itemRows.length
+        done = resultRows.filter((r: { is_done: boolean }) => r.is_done).length
+        rate = total > 0 ? Math.round((done / total) * 100) : 0
       }
-
-      total = items.length
-      done = results.filter(r => r.isDone).length
-      rate = total > 0 ? Math.round((done / total) * 100) : 0
+    } finally {
+      client.release()
     }
   } catch {}
 

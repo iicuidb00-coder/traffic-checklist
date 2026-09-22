@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import pool from '@/lib/db'
 import Sidebar from '@/components/Sidebar'
 import { ChurchRateChart, ChurchTrendChart } from '@/components/charts/AchieveRateChart'
 
@@ -19,33 +19,43 @@ export default async function DashboardPage() {
   }[] = []
   let totalItems = 0, totalDone = 0, overallRate = 0, thisMonthItems = 0, thisMonthDone = 0
 
-  try {
-    churches = await prisma.church.findMany({ orderBy: { order: 'asc' } })
-    const allItems = await prisma.checklistItem.findMany({ where: { year }, select: { churchId: true, month: true } })
-    const allResults = await prisma.checklistResult.findMany({ where: { year }, select: { churchId: true, month: true, isDone: true, failType: true } })
-    totalItems = allItems.length
-    totalDone = allResults.filter(r => r.isDone).length
-    overallRate = totalItems > 0 ? Math.round((totalDone / totalItems) * 100) : 0
-    thisMonthItems = allItems.filter(i => i.month === month).length
-    thisMonthDone = allResults.filter(r => r.month === month && r.isDone).length
-    churchData = churches.map(c => {
-      const cItems = allItems.filter(i => i.churchId === c.id)
-      const cResults = allResults.filter(r => r.churchId === c.id)
-      const done = cResults.filter(r => r.isDone).length
-      const total = cItems.length
-      const failCounts: Record<string, number> = {}
-      cResults.filter(r => !r.isDone && r.failType).forEach(r => {
-        failCounts[r.failType!] = (failCounts[r.failType!] ?? 0) + 1
-      })
-      const monthlyBreakdown = Array.from({ length: 12 }, (_, i) => {
-        const m = i + 1
-        const mI = cItems.filter(x => x.month === m).length
-        const mD = cResults.filter(x => x.month === m && x.isDone).length
-        return { month: m, total: mI, done: mD, rate: mI > 0 ? Math.round((mD / mI) * 100) : null }
-      })
-      return { churchId: c.id, churchCode: c.code, churchName: c.name, total, done, rate: total > 0 ? Math.round((done / total) * 100) : 0, monthlyBreakdown, failCounts }
-    })
-  } catch {}
+    try {
+      const client = await pool.connect()
+      try {
+        const { rows: churchRows } = await client.query(`SELECT * FROM churches ORDER BY "order"`)
+        churches = churchRows
+        const { rows: allItems } = await client.query(
+          `SELECT church_id, month FROM checklist_items WHERE year = $1`, [year]
+        )
+        const { rows: allResults } = await client.query(
+          `SELECT church_id, month, is_done, fail_type FROM checklist_results WHERE year = $1`, [year]
+        )
+        totalItems = allItems.length
+        totalDone = allResults.filter((r: { is_done: boolean }) => r.is_done).length
+        overallRate = totalItems > 0 ? Math.round((totalDone / totalItems) * 100) : 0
+        thisMonthItems = allItems.filter((i: { month: number }) => i.month === month).length
+        thisMonthDone = allResults.filter((r: { month: number; is_done: boolean }) => r.month === month && r.is_done).length
+        churchData = churches.map((c: { id: string; name: string; code: string }) => {
+          const cItems = allItems.filter((i: { church_id: string }) => i.church_id === c.id)
+          const cResults = allResults.filter((r: { church_id: string }) => r.church_id === c.id)
+          const done = cResults.filter((r: { is_done: boolean }) => r.is_done).length
+          const total = cItems.length
+          const failCounts: Record<string, number> = {}
+          cResults.filter((r: { is_done: boolean; fail_type: string }) => !r.is_done && r.fail_type).forEach((r: { fail_type: string }) => {
+            failCounts[r.fail_type] = (failCounts[r.fail_type] ?? 0) + 1
+          })
+          const monthlyBreakdown = Array.from({ length: 12 }, (_, i) => {
+            const m = i + 1
+            const mI = cItems.filter((x: { month: number }) => x.month === m).length
+            const mD = cResults.filter((x: { month: number; is_done: boolean }) => x.month === m && x.is_done).length
+            return { month: m, total: mI, done: mD, rate: mI > 0 ? Math.round((mD / mI) * 100) : null }
+          })
+          return { churchId: c.id, churchCode: c.code, churchName: c.name, total, done, rate: total > 0 ? Math.round((done / total) * 100) : 0, monthlyBreakdown, failCounts }
+        })
+      } finally {
+        client.release()
+      }
+    } catch {}
 
   const thisMonthRate = thisMonthItems > 0 ? Math.round((thisMonthDone / thisMonthItems) * 100) : 0
 
