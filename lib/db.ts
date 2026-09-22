@@ -16,7 +16,7 @@ export default getPool()
 
 // DB 초기화 (테이블 생성 + 시드)
 export async function initDatabase() {
-  const client = await getPool.connect()
+  const client = await getPool().connect()
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS churches (
