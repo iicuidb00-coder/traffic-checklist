@@ -1,1 +1,0 @@
-{"version":1,"functions":{"/api/auth/logout":{},"/api/auth/login":{},"/api/admin/users":{},"/api/auth/zion-login":{},"/api/auth/otp-send":{},"/api/auth/otp-verify":{},"/api/checklist/items":{},"/api/checklist/result":{},"/api/dashboard/summary":{},"/api/init":{},"/admin":{},"/checklist/[church]":{},"/checklist":{},"/api/checklist":{},"/dashboard/[church]":{},"/":{}}}
