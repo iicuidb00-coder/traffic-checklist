@@ -1,5 +1,3 @@
-import { cookies } from 'next/headers'
-
 export type SessionUser = {
   zionNewNo: string
   name: string
@@ -8,17 +6,15 @@ export type SessionUser = {
   churchName: string | null
 }
 
-export async function getSession(): Promise<SessionUser | null> {
-  const cookieStore = await cookies()
-  const raw = cookieStore.get('session')?.value
-  if (!raw) return null
-  try {
-    return JSON.parse(Buffer.from(raw, 'base64').toString('utf-8')) as SessionUser
-  } catch {
-    return null
-  }
+// 로그인 기능을 제거했으므로 항상 관리자 세션을 반환한다.
+const OPEN_SESSION: SessionUser = {
+  zionNewNo: 'open',
+  name: 'admin',
+  role: 'admin',
+  churchId: null,
+  churchName: null,
 }
 
-export function encodeSession(user: SessionUser): string {
-  return Buffer.from(JSON.stringify(user)).toString('base64')
+export async function getSession(): Promise<SessionUser | null> {
+  return OPEN_SESSION
 }

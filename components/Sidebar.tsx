@@ -106,11 +106,7 @@ export default function Sidebar({ role, churchId }: Props) {
           <div className="who-name">관리자</div>
           <div className="who-role">베드로 지파</div>
         </div>
-        <form action="/api/auth/logout" method="POST" style={{ marginLeft: 'auto' }}>
-          <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#727c8b', fontSize: 11 }}>
-            로그아웃
-          </button>
-        </form>
+      
       </div>
     </aside>
   )
